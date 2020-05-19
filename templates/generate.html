@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% block body %}
+<form method="post" action="/generate">
+    <div class="form-group">
+        <input type="tel" class="form-control" name="phone_number" placeholder="Enter your phone number">
+    </div>
+    <div class="form-group">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="channel" value="voice">
+            <label class="form-check-label">Voice</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="channel" value="sms">
+            <label class="form-check-label">Sms</label>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-lg btn-info">Request For OTP</button>
+</form>
+</div>
+{% endblock %}
