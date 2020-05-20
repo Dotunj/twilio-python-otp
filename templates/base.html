@@ -33,10 +33,10 @@
 
 <body>
     <div class="container">
-        {% with messages = get_flashed_messages(category_filter=["success"]) %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        {%- for  msg in messages %}
-        <div class="alert alert-success alert-dismissible">
+        {%- for category,  msg in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible">
             <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
             <strong>{{ msg }}</strong>
         </div>
@@ -44,16 +44,6 @@
         {% endif %}
         {% endwith %}
 
-        {% with errors = get_flashed_messages(category_filter=["error"]) %}
-        {% if errors %}
-        {%- for  msg in errors %}
-        <div class="alert alert-danger alert-dismissible">
-            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-            <strong>{{ msg }}</strong>
-        </div>
-        {% endfor -%}
-        {% endif %}
-        {% endwith %}
         {% block body %} {% endblock %}
         <!-- jQuery library -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
