@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, flash, redirect, url_for, render_template
+from flask import Flask, session, request, flash, redirect, url_for, render_template
 from dotenv import load_dotenv
 from twilio.rest import Client
 import requests
@@ -7,7 +7,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = 'secret'
 twilio_client = Client()
-base_url = 'https://api.generateotp.com/'
+generateotp_url = 'https://api.generateotp.com/'
 
 
 @app.route('/generate', methods=['GET', 'POST'])
@@ -23,11 +23,12 @@ def generate():
         error = 'Invalid channel'
     if error is None:
         formatted_phone_number = phone_number[1:]
+        session['phone_number'] = formatted_phone_number
         otp_code = make_otp_request(formatted_phone_number)
         if otp_code:
             send_otp_code(phone_number, otp_code, channel)
             flash('Otp has been generated successfully', 'success')
-            return redirect(url_for('validate', phone_number=formatted_phone_number))
+            return redirect(url_for('validate',))
         error = 'Something went wrong, could not generate OTP'
     flash(error, 'danger')
     return redirect(url_for('generate'))
@@ -36,27 +37,29 @@ def generate():
 def validate():
     if request.method == 'GET':
         return render_template('validate.html')
-    phone_number = request.args.get('phone_number')
     otp_code = request.form['otp_code']
     error = None
     if not otp_code:
         error = 'Otp code is required'
-    if not phone_number:
-        error = 'No phone number in query string'
+    if 'phone_number' in session:
+        phone_number = session['phone_number']
+    else:
+       error = 'Please request for a new OTP'
     if error is None:
+        session.pop('phone_number', None)
         status, message = verify_otp_code(otp_code, phone_number)
         if status == True:
            flash(message, 'success')
-           return redirect(url_for('validate', phone_number=phone_number))
+           return redirect(url_for('validate'))
         if status == False:
            flash(message, 'danger')
-           return redirect(url_for('validate', phone_number=phone_number))
+           return redirect(url_for('validate'))
         error = 'Something went wrong, could not validate OTP'
     flash(error, 'danger')
-    return redirect(url_for('validate', phone_number=phone_number))
+    return redirect(url_for('generate'))
 
 def verify_otp_code(otp_code, phone_number):
-    r = requests.post(f"{base_url}/validate/{otp_code}/{phone_number}")
+    r = requests.post(f"{generateotp_url}/validate/{otp_code}/{phone_number}")
     if r.status_code == 200:
         data = r.json()
         status = data["status"]
@@ -66,13 +69,12 @@ def verify_otp_code(otp_code, phone_number):
 
 
 def make_otp_request(phone_number):
-    r = requests.post(f"{base_url}/generate",
+    r = requests.post(f"{generateotp_url}/generate",
                       data={'initiator_id': phone_number})
     if r.status_code == 201:
         data = r.json()
         otp_code = str(data["code"])
         return otp_code
-    return None
 
 
 def send_otp_code(phone_number, otp_code, channel):
@@ -80,7 +82,6 @@ def send_otp_code(phone_number, otp_code, channel):
         return send_otp_via_voice_call(phone_number, otp_code)
     if channel == 'sms':
         return send_otp_via_sms(phone_number, otp_code)
-    return None
 
 
 def send_otp_via_voice_call(number, code):
@@ -90,19 +91,15 @@ def send_otp_via_voice_call(number, code):
         to=f"{number}",
         from_=os.getenv('TWILIO_NUMBER')
     )
-    return None
 
 
 def send_otp_via_sms(number, code):
     messages = twilio_client.messages.create(to=f"{number}", from_=os.getenv(
         'TWILIO_NUMBER'), body=f"Your one time password is {code}")
-    return None
 
 
 def split_code(code):
-    items = [char for char in code]
-    separator = " "
-    return separator.join(items)
+    return " ".join(code)
 
 
 if __name__ == '__main__':
